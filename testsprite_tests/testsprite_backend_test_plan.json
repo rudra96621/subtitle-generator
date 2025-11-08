@@ -1,0 +1,52 @@
+[
+  {
+    "id": "TC001",
+    "title": "user registration with valid data",
+    "description": "Test the user registration endpoint /signup with valid full_name, email, username, and password to ensure successful account creation and proper response."
+  },
+  {
+    "id": "TC002",
+    "title": "user login with correct credentials",
+    "description": "Test the user login endpoint /login with valid username and password to verify successful authentication and session creation."
+  },
+  {
+    "id": "TC003",
+    "title": "password reset with matching new passwords",
+    "description": "Test the password reset endpoint /reset_password by providing username, new_password, and confirm_password fields with matching passwords to ensure password update is successful."
+  },
+  {
+    "id": "TC004",
+    "title": "upload video audio file with supported format",
+    "description": "Test the file upload endpoint /upload by uploading a valid video or audio file in supported formats to verify successful file storage and response."
+  },
+  {
+    "id": "TC005",
+    "title": "process video audio for subtitle generation",
+    "description": "Test the /process endpoint by submitting spoken_lang, target_lang, model_size, and device parameters to verify correct transcription, translation, and subtitle generation workflow."
+  },
+  {
+    "id": "TC006",
+    "title": "translate text segments to target language",
+    "description": "Test the /translate endpoint by sending an array of text segments with start and end times along with a target_lang to verify accurate translation of text segments using Google Translate API."
+  },
+  {
+    "id": "TC007",
+    "title": "render subtitles on video with font and timing",
+    "description": "Test the /render_subtitles endpoint by providing video_path, subtitle segments, output_path, and font_path to verify correct rendering of subtitles on the video with proper font selection and synchronization."
+  },
+  {
+    "id": "TC008",
+    "title": "download subtitle file by filename",
+    "description": "Test the /download/srt endpoint by requesting a subtitle file with a valid filename query parameter to ensure the correct subtitle file is returned for download."
+  },
+  {
+    "id": "TC009",
+    "title": "download video file by filename",
+    "description": "Test the /download/video endpoint by requesting a video file with a valid filename query parameter to verify the correct video file is returned for download."
+  },
+  {
+    "id": "TC010",
+    "title": "admin get all users with optional search",
+    "description": "Test the /admin/users endpoint with and without the optional search query parameter to verify retrieval of user list filtered by search criteria if provided."
+  }
+]

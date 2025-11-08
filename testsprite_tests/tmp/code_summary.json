@@ -1,0 +1,348 @@
+{
+  "tech_stack": [
+    "Python",
+    "Streamlit",
+    "MongoDB",
+    "OpenAI Whisper",
+    "OpenCV",
+    "FFmpeg",
+    "Google Translate API",
+    "GridFS",
+    "bcrypt"
+  ],
+  "features": [
+    {
+      "name": "User Authentication",
+      "description": "User registration, login, logout, password reset, and profile management",
+      "files": ["app.py"],
+      "api_doc": {
+        "paths": {
+          "/signup": {
+            "post": {
+              "summary": "User Registration",
+              "requestBody": {
+                "required": true,
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "type": "object",
+                      "properties": {
+                        "full_name": {"type": "string"},
+                        "email": {"type": "string"},
+                        "username": {"type": "string"},
+                        "password": {"type": "string"}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "/login": {
+            "post": {
+              "summary": "User Login",
+              "requestBody": {
+                "required": true,
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "type": "object",
+                      "properties": {
+                        "username": {"type": "string"},
+                        "password": {"type": "string"}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "/reset_password": {
+            "post": {
+              "summary": "Password Reset",
+              "requestBody": {
+                "required": true,
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "type": "object",
+                      "properties": {
+                        "username": {"type": "string"},
+                        "new_password": {"type": "string"},
+                        "confirm_password": {"type": "string"}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Video/Audio Processing",
+      "description": "Upload video/audio files, transcribe using Whisper, generate subtitles, and render subtitles on video",
+      "files": ["app.py", "subtitle_generator.py"],
+      "api_doc": {
+        "paths": {
+          "/upload": {
+            "post": {
+              "summary": "Upload Video/Audio File",
+              "requestBody": {
+                "required": true,
+                "content": {
+                  "multipart/form-data": {
+                    "schema": {
+                      "type": "object",
+                      "properties": {
+                        "file": {
+                          "type": "string",
+                          "format": "binary"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "/process": {
+            "post": {
+              "summary": "Process Video/Audio for Subtitle Generation",
+              "requestBody": {
+                "required": true,
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "type": "object",
+                      "properties": {
+                        "spoken_lang": {"type": "string"},
+                        "target_lang": {"type": "string"},
+                        "model_size": {"type": "string", "enum": ["tiny", "medium", "large"]},
+                        "device": {"type": "string", "enum": ["CPU", "GPU (CUDA)"]}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Translation Service",
+      "description": "Translate transcribed text segments using Google Translate API",
+      "files": ["subtitle_generator.py"],
+      "api_doc": {
+        "paths": {
+          "/translate": {
+            "post": {
+              "summary": "Translate Text Segments",
+              "requestBody": {
+                "required": true,
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "type": "object",
+                      "properties": {
+                        "segments": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "start": {"type": "number"},
+                              "end": {"type": "number"},
+                              "text": {"type": "string"}
+                            }
+                          }
+                        },
+                        "target_lang": {"type": "string"}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Subtitle Rendering",
+      "description": "Render subtitles on video with proper font selection and positioning",
+      "files": ["subtitle_generator.py"],
+      "api_doc": {
+        "paths": {
+          "/render_subtitles": {
+            "post": {
+              "summary": "Render Subtitles on Video",
+              "requestBody": {
+                "required": true,
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "type": "object",
+                      "properties": {
+                        "video_path": {"type": "string"},
+                        "segments": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "start": {"type": "number"},
+                              "end": {"type": "number"},
+                              "text": {"type": "string"}
+                            }
+                          }
+                        },
+                        "output_path": {"type": "string"},
+                        "font_path": {"type": "string"}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "File Management",
+      "description": "Download generated subtitle files and videos, manage user history",
+      "files": ["app.py"],
+      "api_doc": {
+        "paths": {
+          "/download/srt": {
+            "get": {
+              "summary": "Download Subtitle File",
+              "parameters": [
+                {
+                  "name": "filename",
+                  "in": "query",
+                  "required": true,
+                  "schema": {"type": "string"}
+                }
+              ]
+            }
+          },
+          "/download/video": {
+            "get": {
+              "summary": "Download Video File",
+              "parameters": [
+                {
+                  "name": "filename",
+                  "in": "query",
+                  "required": true,
+                  "schema": {"type": "string"}
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Admin Panel",
+      "description": "Admin functionality to manage users, roles, and user history",
+      "files": ["admin_panel.py"],
+      "api_doc": {
+        "paths": {
+          "/admin/users": {
+            "get": {
+              "summary": "Get All Users",
+              "parameters": [
+                {
+                  "name": "search",
+                  "in": "query",
+                  "required": false,
+                  "schema": {"type": "string"}
+                }
+              ]
+            }
+          },
+          "/admin/users/{username}/role": {
+            "put": {
+              "summary": "Update User Role",
+              "parameters": [
+                {
+                  "name": "username",
+                  "in": "path",
+                  "required": true,
+                  "schema": {"type": "string"}
+                }
+              ]
+            }
+          },
+          "/admin/users/{username}/block": {
+            "put": {
+              "summary": "Block/Unblock User",
+              "parameters": [
+                {
+                  "name": "username",
+                  "in": "path",
+                  "required": true,
+                  "schema": {"type": "string"}
+                }
+              ]
+            }
+          },
+          "/admin/users/{username}": {
+            "delete": {
+              "summary": "Delete User",
+              "parameters": [
+                {
+                  "name": "username",
+                  "in": "path",
+                  "required": true,
+                  "schema": {"type": "string"}
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Database Operations",
+      "description": "MongoDB operations for user data, file storage using GridFS",
+      "files": ["app.py", "admin_panel.py", "utils.py"],
+      "api_doc": {
+        "paths": {
+          "/db/users": {
+            "get": {
+              "summary": "Get User Data"
+            },
+            "post": {
+              "summary": "Create User"
+            },
+            "put": {
+              "summary": "Update User"
+            },
+            "delete": {
+              "summary": "Delete User"
+            }
+          },
+          "/db/files": {
+            "post": {
+              "summary": "Store File in GridFS"
+            },
+            "get": {
+              "summary": "Retrieve File from GridFS"
+            }
+          }
+        }
+      }
+    }
+  ]
+}
+
+
+
+
+
+
+
+

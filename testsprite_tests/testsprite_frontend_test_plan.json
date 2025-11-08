@@ -1,0 +1,535 @@
+[
+  {
+    "id": "TC001",
+    "title": "User Registration Success",
+    "description": "Verify successful user registration with valid email, username, and password",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to registration page or API endpoint"
+      },
+      {
+        "type": "action",
+        "description": "Submit valid full name, email, username, and password"
+      },
+      {
+        "type": "assertion",
+        "description": "Registration is successful and user is created in database"
+      },
+      {
+        "type": "assertion",
+        "description": "Password is stored hashed using bcrypt"
+      }
+    ]
+  },
+  {
+    "id": "TC002",
+    "title": "User Registration with Duplicate Email or Username",
+    "description": "Verify registration fails if email or username already exists",
+    "category": "error handling",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Attempt to register with an email or username that already exists"
+      },
+      {
+        "type": "assertion",
+        "description": "Registration request is rejected with appropriate error message"
+      }
+    ]
+  },
+  {
+    "id": "TC003",
+    "title": "User Login Success",
+    "description": "Check login is successful with correct username and password",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to login page or API endpoint"
+      },
+      {
+        "type": "action",
+        "description": "Input correct username and password"
+      },
+      {
+        "type": "action",
+        "description": "Submit login request"
+      },
+      {
+        "type": "assertion",
+        "description": "User is authenticated and receives valid session or token"
+      }
+    ]
+  },
+  {
+    "id": "TC004",
+    "title": "User Login Failure with Incorrect Credentials",
+    "description": "Verify login fails when incorrect username or password is provided",
+    "category": "error handling",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Attempt login with wrong username or password"
+      },
+      {
+        "type": "assertion",
+        "description": "Login request is denied with error message"
+      }
+    ]
+  },
+  {
+    "id": "TC005",
+    "title": "Password Reset Success",
+    "description": "Verify password reset workflow succeeds with matching new passwords",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Request password reset with valid username"
+      },
+      {
+        "type": "action",
+        "description": "Provide new_password and confirm_password matching"
+      },
+      {
+        "type": "action",
+        "description": "Submit password reset request"
+      },
+      {
+        "type": "assertion",
+        "description": "Password is updated and hashed correctly in database"
+      }
+    ]
+  },
+  {
+    "id": "TC006",
+    "title": "Password Reset Failure with Mismatched New Passwords",
+    "description": "Ensure password reset fails when new_password and confirm_password do not match",
+    "category": "error handling",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Request password reset with valid username"
+      },
+      {
+        "type": "action",
+        "description": "Provide mismatched new_password and confirm_password"
+      },
+      {
+        "type": "action",
+        "description": "Submit password reset request"
+      },
+      {
+        "type": "assertion",
+        "description": "Password reset request is rejected with validation error"
+      }
+    ]
+  },
+  {
+    "id": "TC007",
+    "title": "Video/Audio File Upload Success",
+    "description": "Validate that valid audio/video files can be uploaded successfully",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Choose a supported audio or video file format (e.g. mp4, mp3)"
+      },
+      {
+        "type": "action",
+        "description": "Upload the file via API or frontend"
+      },
+      {
+        "type": "assertion",
+        "description": "Upload succeeds and file is stored in GridFS"
+      },
+      {
+        "type": "assertion",
+        "description": "File metadata is saved in user's processing history"
+      }
+    ]
+  },
+  {
+    "id": "TC008",
+    "title": "Video/Audio File Upload Failure with Unsupported Format",
+    "description": "Ensure that uploading unsupported file formats is rejected",
+    "category": "error handling",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Attempt to upload unsupported file format (e.g. .exe or text file)"
+      },
+      {
+        "type": "assertion",
+        "description": "Upload is rejected with clear error message"
+      }
+    ]
+  },
+  {
+    "id": "TC009",
+    "title": "Speech-to-Text Transcription Accuracy for Model Sizes",
+    "description": "Verify transcription accuracy and performance with tiny, medium, and large Whisper models",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Upload audio/video file and select 'tiny' model"
+      },
+      {
+        "type": "action",
+        "description": "Request transcription processing"
+      },
+      {
+        "type": "assertion",
+        "description": "Transcribed text matches expected output within acceptable error margin"
+      },
+      {
+        "type": "action",
+        "description": "Repeat above steps with 'medium' and 'large' models"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify transcription quality improves and processing time increases with model size"
+      }
+    ]
+  },
+  {
+    "id": "TC010",
+    "title": "Translation Service Correctness",
+    "description": "Check that translated text segments correctly reflect target language",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Provide transcription segments in source language"
+      },
+      {
+        "type": "action",
+        "description": "Request translation to a variety of target languages (English, Spanish, Chinese)"
+      },
+      {
+        "type": "assertion",
+        "description": "Translated segments are accurate and coherent in target languages"
+      }
+    ]
+  },
+  {
+    "id": "TC011",
+    "title": "Translation Service Handles Unsupported Language",
+    "description": "Ensure system gracefully handles translation requests to unsupported target languages",
+    "category": "error handling",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Request translation with invalid or unsupported target language code"
+      },
+      {
+        "type": "assertion",
+        "description": "Translation request fails with proper error message"
+      }
+    ]
+  },
+  {
+    "id": "TC012",
+    "title": "Subtitle Rendering Formatting and Synchronization",
+    "description": "Validate subtitles are correctly rendered on video with appropriate font, positioning, and timing",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Provide video path and segments with start/end times and text"
+      },
+      {
+        "type": "action",
+        "description": "Submit request to render subtitles with font path"
+      },
+      {
+        "type": "assertion",
+        "description": "Output video contains subtitles with correct timing and placement"
+      },
+      {
+        "type": "assertion",
+        "description": "Subtitles for multiple scripts are rendered with appropriate fonts"
+      }
+    ]
+  },
+  {
+    "id": "TC013",
+    "title": "Subtitle File Download",
+    "description": "Verify users can download generated SRT subtitle files",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Generate subtitle SRT file from processed video/audio"
+      },
+      {
+        "type": "action",
+        "description": "Request download using filename parameter"
+      },
+      {
+        "type": "assertion",
+        "description": "Subtitle file is downloaded and content matches expected subtitles"
+      }
+    ]
+  },
+  {
+    "id": "TC014",
+    "title": "Video with Embedded Subtitles Download",
+    "description": "Verify users can download videos with embedded subtitles",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Process video to embed subtitles"
+      },
+      {
+        "type": "action",
+        "description": "Request download of video file using filename parameter"
+      },
+      {
+        "type": "assertion",
+        "description": "Video file is downloaded and subtitles are visible when played"
+      }
+    ]
+  },
+  {
+    "id": "TC015",
+    "title": "User Processing History Limit",
+    "description": "Ensure user processing history stores only last 3 processed files",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Process more than 3 video/audio files sequentially"
+      },
+      {
+        "type": "assertion",
+        "description": "Only the last 3 files are preserved in user's processing history"
+      }
+    ]
+  },
+  {
+    "id": "TC016",
+    "title": "Admin User Login and Authorization",
+    "description": "Validate admin users can login and access admin panel features",
+    "category": "security",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Admin user navigates to admin login page"
+      },
+      {
+        "type": "action",
+        "description": "Admin user inputs valid credentials and submits login"
+      },
+      {
+        "type": "assertion",
+        "description": "Admin user is authenticated and granted access to admin panel"
+      }
+    ]
+  },
+  {
+    "id": "TC017",
+    "title": "Admin Manage User Roles",
+    "description": "Verify admin can update user roles with valid changes",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Admin searches for a user in admin panel"
+      },
+      {
+        "type": "action",
+        "description": "Admin updates the user role via admin API"
+      },
+      {
+        "type": "assertion",
+        "description": "User role is updated successfully and reflected in system"
+      }
+    ]
+  },
+  {
+    "id": "TC018",
+    "title": "Admin Block and Unblock Users",
+    "description": "Check admin can block and unblock users and that blocked users are restricted",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Admin blocks a user account"
+      },
+      {
+        "type": "assertion",
+        "description": "Blocked user is prevented from logging in or submitting jobs"
+      },
+      {
+        "type": "action",
+        "description": "Admin unblocks the same user"
+      },
+      {
+        "type": "assertion",
+        "description": "User is able to login and use services after unblocking"
+      }
+    ]
+  },
+  {
+    "id": "TC019",
+    "title": "Admin Delete Users",
+    "description": "Validate that admin can delete user accounts and associated data",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Admin deletes a user account via admin API"
+      },
+      {
+        "type": "assertion",
+        "description": "User cannot login and all related data is removed from system and GridFS"
+      }
+    ]
+  },
+  {
+    "id": "TC020",
+    "title": "File Storage and Retrieval via GridFS",
+    "description": "Test storing and retrieving files in GridFS for audio/video and subtitles",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Upload file to GridFS storage"
+      },
+      {
+        "type": "assertion",
+        "description": "File is stored and metadata is recorded"
+      },
+      {
+        "type": "action",
+        "description": "Retrieve stored file by filename or id"
+      },
+      {
+        "type": "assertion",
+        "description": "Retrieved file data matches uploaded content"
+      }
+    ]
+  },
+  {
+    "id": "TC021",
+    "title": "UI Responsiveness and Real-time Progress Tracking",
+    "description": "Check that the UI updates real-time to show processing progress during transcription and rendering",
+    "category": "ui",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Upload file and start subtitle generation via UI"
+      },
+      {
+        "type": "assertion",
+        "description": "UI shows progress bar or percentage updates in real-time"
+      },
+      {
+        "type": "assertion",
+        "description": "UI remains responsive without freezing during processing"
+      }
+    ]
+  },
+  {
+    "id": "TC022",
+    "title": "Multiple Script Subtitle Rendering and Font Selection",
+    "description": "Ensure subtitles with different scripts (e.g. Latin, Cyrillic, Chinese) are rendered with appropriate fonts",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Submit subtitle rendering request with segments containing multiple scripts"
+      },
+      {
+        "type": "assertion",
+        "description": "Rendered video contains correctly displayed subtitles using auto-selected fonts matching scripts"
+      }
+    ]
+  },
+  {
+    "id": "TC023",
+    "title": "System Performance Benchmark by Model Size and File Size",
+    "description": "Validate system processes files within performance targets depending on Whisper model size and input file size",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Process files of varying sizes using 'tiny', 'medium', and 'large' models"
+      },
+      {
+        "type": "assertion",
+        "description": "Processing times conform to expected benchmarks for each model size"
+      }
+    ]
+  },
+  {
+    "id": "TC024",
+    "title": "Input Validation for API Endpoints",
+    "description": "Verify all API endpoints properly validate input parameters and reject invalid or malicious inputs",
+    "category": "security",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Send malformed or invalid data to signup, login, upload, process, translate, render, admin, and DB endpoints"
+      },
+      {
+        "type": "assertion",
+        "description": "Endpoints respond with appropriate error status and messages without crashing"
+      }
+    ]
+  },
+  {
+    "id": "TC025",
+    "title": "Access Control Restrictions",
+    "description": "Validate that user-specific and admin-only APIs enforce proper authorization and access control",
+    "category": "security",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Attempt to access admin endpoints with regular user credentials"
+      },
+      {
+        "type": "assertion",
+        "description": "Access is denied with authorization error"
+      },
+      {
+        "type": "action",
+        "description": "Attempt to access user-specific resources (e.g. processing history) without authentication"
+      },
+      {
+        "type": "assertion",
+        "description": "Request is rejected with authentication error"
+      }
+    ]
+  }
+]

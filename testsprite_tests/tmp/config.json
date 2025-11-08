@@ -1,0 +1,17 @@
+{
+  "status": "commited",
+  "type": "backend",
+  "scope": "codebase",
+  "localEndpoint": "http://localhost:8501",
+  "backendAuthType": "public",
+  "executionArgs": {
+    "projectName": "subtitle-generator",
+    "projectPath": "D:\\subtitle-generator",
+    "testIds": [],
+    "additionalInstruction": "Run comprehensive production-level testing including: security vulnerabilities, performance issues, error handling, edge cases, input validation, database operations, file operations, authentication flows, admin panel functionality, and overall system stability. Focus on finding any bugs that could cause production failures.",
+    "envs": {
+      "API_KEY": "sk-user-iHggY4jmXoIAjyCA5LD69gAEFA4TOZ-JrgjUvFsH-RCvKUa6j9Oivo0a8a7YlnhlD-rwUhmNGPjjOn9-L6CstG2OmF_gcgN56eSXqoEH6Q5MKtpPHfXacUT5NEPVEIy1ZH8"
+    }
+  },
+  "proxy": "http://f4211be8-8635-490e-a9c3-e4efa24eaf32:XZlXo5WfxG4N5bprJRLoiQdYSNXmu496@tun.testsprite.com:8080"
+}

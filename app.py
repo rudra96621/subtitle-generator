@@ -17,11 +17,15 @@ from admin_panel import admin_panel
 
 # MongoDB Connection
 def get_connection():
+   def get_connection():
     username = os.getenv("MONGODB_USERNAME")
     password = quote_plus(os.getenv("MONGODB_PASSWORD"))
-    cluster_url = os.getenv("MONGODB_CLUSTER_URL")
+    cluster_url = os.getenv("MONGODB_CLUSTER")  
     database_name = os.getenv("MONGODB_DATABASE")
-    
+
+    uri = f"mongodb+srv://{username}:{password}@{cluster_url}/{database_name}?retryWrites=true&w=majority"
+    return MongoClient(uri)
+
     uri = f"mongodb+srv://{username}:{password}@{cluster_url}/{database_name}?retryWrites=true&w=majority"
     
     try:

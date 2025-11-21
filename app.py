@@ -496,10 +496,12 @@ def process_video():
         base = os.path.splitext(os.path.basename(temp_path))[0]
         srt_path = f"output/{base}.srt"
         video_output_path = f"output/{base}_subtitled.mp4"
+        os.makedirs("output", exist_ok=True)
 
         font_path = get_font_for_text(
             translated_segments[0]['text'] if translated_segments else ''
         )
+        os.makedirs("output", exist_ok=True)
 
         export_srt(translated_segments, srt_path)
         progress_bar.progress(progress := 85)

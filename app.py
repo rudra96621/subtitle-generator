@@ -30,7 +30,7 @@ def get_connection():
         # Test connection
         client.admin.command("ping")
 
-        return client[database_name]   # ✅ RETURN THE DATABASE, NOT THE CLIENT
+        return client[database_name]   
 
     except Exception as e:
         st.error(f"❌ Database connection failed: {e}")

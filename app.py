@@ -17,10 +17,10 @@ from admin_panel import admin_panel
 
 # MongoDB Connection
 def get_connection():
-    username = os.getenv("MONGODB_USERNAME", "rudra")
-    password = quote_plus(os.getenv("MONGODB_PASSWORD", "Rudra@123"))
-    cluster_url = os.getenv("MONGODB_CLUSTER_URL", "cluster0.ucw0onm.mongodb.net")
-    database_name = os.getenv("MONGODB_DATABASE", "subtitleApp")
+    username = os.getenv("MONGODB_USERNAME")
+    password = quote_plus(os.getenv("MONGODB_PASSWORD"))
+    cluster_url = os.getenv("MONGODB_CLUSTER_URL")
+    database_name = os.getenv("MONGODB_DATABASE")
     
     uri = f"mongodb+srv://{username}:{password}@{cluster_url}/{database_name}?retryWrites=true&w=majority"
     

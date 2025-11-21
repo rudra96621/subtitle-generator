@@ -1,5 +1,6 @@
-
-# Import Required Modules
+# ------------------------------------------------------- 
+#                IMPORT REQUIRED MODULES
+# -------------------------------------------------------
 import streamlit as st
 import whisper
 import os
@@ -13,44 +14,67 @@ from bson import ObjectId
 from urllib.parse import quote_plus
 import certifi
 from admin_panel import admin_panel
+from dotenv import load_dotenv
+load_dotenv()
+
+# Cookie manager for persistent login
+from streamlit_cookies_manager import EncryptedCookieManager
+import secrets
 
 
-# MongoDB Connection
+# -------------------------------------------------------
+#                  COOKIE SECRET KEY
+# -------------------------------------------------------
+# Used to encrypt login cookies
+SECRET_KEY = os.getenv("COOKIE_SECRET_KEY")
+if not SECRET_KEY:
+    SECRET_KEY = secrets.token_hex(32)  # auto-generate if missing
+
+cookies = EncryptedCookieManager(prefix="subtitle_app/", password=SECRET_KEY)
+
+if not cookies.ready():
+    st.stop()
+
+
+# -------------------------------------------------------
+#             MONGODB CONNECTION FUNCTION
+# -------------------------------------------------------
 def get_connection():
-    username = os.getenv("MONGODB_USERNAME")
-    password = quote_plus(os.getenv("MONGODB_PASSWORD"))
-    cluster_url = os.getenv("MONGODB_CLUSTER")
-    database_name = os.getenv("MONGODB_DATABASE")
+    """Connect to MongoDB using ENV credentials, return DB."""
+    username = os.getenv("MONGODB_USERNAME", "rudra")
+    password = quote_plus(os.getenv("MONGODB_PASSWORD", "Rudra@123"))
+    cluster_url = os.getenv("MONGODB_CLUSTER_URL", "cluster0.ucw0onm.mongodb.net")
+    database_name = os.getenv("MONGODB_DATABASE", "subtitleApp")
 
     uri = f"mongodb+srv://{username}:{password}@{cluster_url}/{database_name}?retryWrites=true&w=majority"
 
     try:
         client = MongoClient(uri, tls=True, serverSelectionTimeoutMS=5000)
-
-        # Test connection
-        client.admin.command("ping")
-
-        return client[database_name]   
-
+        client.admin.command('ping')   # test connection
+        return client[database_name]
     except Exception as e:
-        st.error(f"❌ Database connection failed: {e}")
+        st.error(f"❌ MongoDB Connection Failed: {str(e)}")
         return None
 
 
-# Store new file versions and keep only 3 per user
+# -------------------------------------------------------
+#     SAVE A USER’S PROCESSED FILES TO MONGO (GRIDFS)
+# -------------------------------------------------------
 def save_to_gridfs(username, video_path, srt_path):
+    """Store video + srt to GridFS and maintain last 3 items."""
     db = get_connection()
     if db is None:
-        st.error("❌ Cannot save files: Database connection failed")
         return False
     
     try:
         fs = gridfs.GridFS(db)
 
+        # Upload both files into GridFS
         with open(video_path, "rb") as v, open(srt_path, "rb") as s:
             video_id = fs.put(v, filename=os.path.basename(video_path))
             srt_id = fs.put(s, filename=os.path.basename(srt_path))
 
+        # Push into user history (limit to last 3)
         db["users"].update_one(
             {"username": username},
             {"$push": {
@@ -66,26 +90,31 @@ def save_to_gridfs(username, video_path, srt_path):
             }}
         )
         return True
+
     except Exception as e:
-        st.error(f"❌ Failed to save files to database: {str(e)}")
+        st.error(f"❌ Failed to save files: {str(e)}")
         return False
 
+
+
+# -------------------------------------------------------
+#          LOAD USER HISTORY FROM MONGODB
+# -------------------------------------------------------
 def load_recent_history_from_mongo(username, db):
+    """Load last 3 files from DB and store in session."""
     if db is None:
-        st.warning("⚠️ Cannot load history: Database connection failed")
         return
     
     try:
         fs = gridfs.GridFS(db)
         user = db["users"].find_one({"username": username})
-        
         if not user:
-            st.warning(f"⚠️ User '{username}' not found in database")
             return
-            
+
         st.session_state.history = []
         history_items = user.get("history", [])[::-1]
 
+        # Load each file
         for entry in history_items:
             try:
                 video_data = fs.get(ObjectId(entry['video_file_id'])).read()
@@ -96,17 +125,21 @@ def load_recent_history_from_mongo(username, db):
                     "video_data": video_data,
                     "srt_data": srt_data
                 })
-            except Exception as e:
-                st.warning(f"⚠️ Failed to load history item: {str(e)}")
+            except:
                 continue
-    except Exception as e:
-        st.error(f"❌ Failed to load user history: {str(e)}")
 
-# Session Initialization
-for key, value in {
+    except Exception as e:
+        st.error(f"❌ Error Loading History: {str(e)}")
+
+
+
+# -------------------------------------------------------
+#           INITIALIZE ALL STREAMLIT SESSION KEYS
+# -------------------------------------------------------
+DEFAULT_SESSION_VALUES = {
     'authenticated': False,
     'username': "",
-    'page': 'main',  # Default to main page
+    'page': 'main',
     'processing_done': False,
     'srt_file': None,
     'video_file': None,
@@ -114,41 +147,71 @@ for key, value in {
     'spoken_lang': 'Auto',
     'target_lang': 'English',
     'show_dropdown': False,
-    'device': 'CPU',
+    'device': 'GPU',
     'model_size': 'tiny',
     'history': [],
     'is_processing': False,
     'role': None,
     'model_loaded': {}
-}.items():
+}
+
+for key, value in DEFAULT_SESSION_VALUES.items():
     if key not in st.session_state:
         st.session_state[key] = value
 
-# Ensure page is always set to main if not authenticated
-if not st.session_state.authenticated and st.session_state.page not in ['login', 'signup', 'reset_password']:
-    st.session_state.page = 'main'
+
+
+# ---------------------------
+# RESTORE COOKIE-BASED SESSION
+# ---------------------------
+# We intentionally restore session from cookie here so that:
+# - refreshing the page keeps the user logged in (same browser)
+# - but users still must explicitly log in at least once to set the cookie
+# This block does NOT auto-login users across different browsers/devices.
+if not st.session_state.get("authenticated"):
+    try:
+        if cookies.get("logged_in") == "yes":
+            stored_username = cookies.get("username")
+            if stored_username:
+                st.session_state.authenticated = True
+                st.session_state.username = stored_username
+                # load history (best effort)
+                db = get_connection()
+                if db:
+                    load_recent_history_from_mongo(st.session_state.username, db)
+    except Exception:
+        # if cookie read fails for any reason, keep anonymous state
+        pass
+# -------------------------------------------------------
+
+
+#LOAD SUPPORTED LANGUAGES
 
 if 'SUPPORTED_LANGS' not in st.session_state:
     langs = GoogleTranslator().get_supported_languages(as_dict=True)
     st.session_state.LANG_DICT = {name.title(): code for name, code in langs.items()}
 
-#os.makedirs('output', exist_ok=True)
 
-@st.cache_resource(show_spinner="🔄 Loading Whisper model...")
-def load_whisper_model(model_size="tiny", device="cpu"):
+
+#LOAD / CACHE WHISPER MODEL ONCE
+
+@st.cache_resource(show_spinner="🔄 Loading Whisper Model...")
+def load_whisper_model(model_size="tiny", device="gpu"):
     os.environ["WHISPER_CACHE_DIR"] = os.path.expanduser("~/.cache/whisper")
     return whisper.load_model(model_size, device=device)
 
+
 def get_or_load_model():
+    """Reuse existing model; load only once."""
     key = f"{st.session_state.model_size}_{st.session_state.device}"
     if key not in st.session_state.model_loaded:
-        with st.spinner(""):
-            st.session_state.model_loaded[key] = load_whisper_model(
-                model_size=st.session_state.model_size,
-                device="cuda" if st.session_state.device == "GPU (CUDA)" else "cpu"
-            )
+        st.session_state.model_loaded[key] = load_whisper_model(
+            model_size=st.session_state.model_size,
+            device="cuda" if st.session_state.device == "GPU (CUDA)" else "cpu"
+        )
     return st.session_state.model_loaded[key]
 
+#USER SIGNUP PAGE
 def signup():
     st.title("📝 Sign Up")
 
@@ -189,7 +252,7 @@ def signup():
             st.error("⚠️ Email already registered.")
             return
 
-        # ------------------ CREATE USER ------------------
+        # ------------------ CREATE USER ----------------
         hashed_pw = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
         users.insert_one({
             "full_name": full_name,
@@ -214,6 +277,11 @@ def signup():
     if st.button("🔐 Login Here"):
         st.session_state.page = "login"
         st.rerun()
+
+
+
+
+#RESET PASSWORD PAGE
 
 
 def reset_password():
@@ -245,6 +313,8 @@ def reset_password():
         st.rerun()
 
 
+
+#LOGIN
 def login():
     st.title("🔐 Login")
 
@@ -286,6 +356,15 @@ def login():
         st.session_state.username = username
         st.session_state.role = "admin" if user.get("is_admin") else "user"
         st.session_state.page = "main"
+        
+        # Save login cookie (persist across refreshes in same browser)
+        try:
+            cookies["logged_in"] = "yes"
+            cookies["username"] = username
+            cookies.save()
+        except Exception:
+            # If cookie save fails, still keep session state active
+            pass
 
         # Load recent history
         load_recent_history_from_mongo(username, db)
@@ -305,11 +384,25 @@ def login():
         if st.button("🔑 Forgot Password"):
             st.session_state.page = "reset_password"
             st.rerun()
-
+            
 def logout():
-    st.session_state.clear()
+    # Remove cookie and clear relevant session keys
+    try:
+        cookies["logged_in"] = "no"
+        cookies["username"] = ""
+        cookies.save()
+    except Exception:
+        pass
+
+    for key in ["authenticated", "username", "role", "page", "history"]:
+        if key in st.session_state:
+            del st.session_state[key]
+
+    # ensure page shows login after logout
     st.session_state.page = "login"
     st.rerun()
+
+#USER PROFILE PAGE
 
 def profile_page():
     st.title("🧾 Profile")
@@ -331,54 +424,66 @@ def profile_page():
             st.session_state.page = "main"
             st.rerun()
 
+
+
+#ESTIMATE PROCESSING TIME (UI ONLY)
+
 def estimate_total_time(duration_sec, model_size="medium"):
-    speed = {"tiny": 1.0, "base": 1.5, "small": 2.0, "medium": 3.5, "large": 5.0}
-    return int(duration_sec * speed.get(model_size, 2))
+    speeds = {"tiny": 1.0, "base": 1.5, "small": 2.0, "medium": 3.5, "large": 5.0}
+    return int(duration_sec * speeds.get(model_size, 2))
+
 
 def format_eta(seconds):
     return f"{seconds // 60}m {seconds % 60}s" if seconds >= 60 else f"{seconds}s"
 
-def save_subtitle_history(username, original_language, translated_language, filename):
-    video_path = os.path.join("output", filename)
-    srt_path = video_path.replace("_subtitled.mp4", ".srt")
-    save_to_gridfs(username, video_path, srt_path)
+
+
+
+#MAIN VIDEO PROCESSING FUNCTION
 
 def process_video():
+    """Main workflow: transcription → translation → SRT → burn subtitles."""
     try:
         st.session_state.is_processing = True
         file = st.session_state.uploaded_file
         spoken_lang = st.session_state.spoken_lang
         target_lang = st.session_state.target_lang
+
+        # --- Save temp file locally ---
         ext = os.path.splitext(file.name)[1]
         with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as temp_file:
             temp_file.write(file.read())
             temp_path = temp_file.name
 
+        # Estimate time
         duration = whisper.audio.load_audio(temp_path).shape[0] / whisper.audio.SAMPLE_RATE
-        st.markdown(f"🕒 **Estimated time:** `{format_eta(estimate_total_time(duration, st.session_state.model_size))}`")
+        st.markdown(f"🕒 Estimated Time: `{format_eta(estimate_total_time(duration, st.session_state.model_size))}`")
 
+        # UI progress bar
         progress_bar = st.progress(0)
         progress = 0
 
+        # Load whisper model
         model = get_or_load_model()
         progress_bar.progress(progress := 20)
 
-        # transcription step
+        # --- Transcription ---
         transcription = model.transcribe(
             temp_path,
-            language=None if spoken_lang == "Auto" else st.session_state.LANG_DICT[spoken_lang]
+            language=None if spoken_lang == "Auto"
+            else st.session_state.LANG_DICT[spoken_lang]
         )
         progress_bar.progress(progress := 45)
 
-        segments = transcription['segments']
+        # --- Translate segments ---
         translated_segments = []
-        for seg in segments:
+        for seg in transcription['segments']:
             try:
                 translated = GoogleTranslator(
                     source='auto',
                     target=st.session_state.LANG_DICT[target_lang]
                 ).translate(seg['text'])
-            except Exception:
+            except:
                 translated = "[Translation Failed]"
             translated_segments.append({
                 'start': seg['start'],
@@ -387,10 +492,14 @@ def process_video():
             })
         progress_bar.progress(progress := 70)
 
+        # --- Export final files ---
         base = os.path.splitext(os.path.basename(temp_path))[0]
         srt_path = f"output/{base}.srt"
         video_output_path = f"output/{base}_subtitled.mp4"
-        font_path = get_font_for_text(translated_segments[0]['text'] if translated_segments else '')
+
+        font_path = get_font_for_text(
+            translated_segments[0]['text'] if translated_segments else ''
+        )
 
         export_srt(translated_segments, srt_path)
         progress_bar.progress(progress := 85)
@@ -398,11 +507,13 @@ def process_video():
         render_subtitles_on_video(temp_path, translated_segments, video_output_path, font_path)
         progress_bar.progress(100)
 
+        # Store results in session
         st.session_state.processing_done = True
         st.session_state.srt_file = srt_path
         st.session_state.video_file = video_output_path
         st.session_state.is_processing = False
 
+        # Update local history
         with open(srt_path, "rb") as f1, open(video_output_path, "rb") as f2:
             st.session_state.history.insert(0, {
                 "video_name": os.path.basename(video_output_path),
@@ -412,40 +523,24 @@ def process_video():
             })
             st.session_state.history = st.session_state.history[:3]
 
-        if not save_subtitle_history(
-            st.session_state.username, spoken_lang, target_lang, os.path.basename(video_output_path)
-        ):
-            #st.warning("⚠️ Files processed successfully but could not be saved to database history.")
-            pass
+        # Save history in DB
+        save_to_gridfs(st.session_state.username, video_output_path, srt_path)
 
     except Exception as e:
-        # 🔴 Friendly error instead of ugly traceback
-        import traceback
-        traceback.print_exc()  # logs full error in console (for developer)
-        st.error("❌ Something went wrong while processing your video. Please try again with a different file.")
+        st.error("❌ Something went wrong! Try another file.")
         st.session_state.is_processing = False
 
 
-    with open(srt_path, "rb") as f1, open(video_output_path, "rb") as f2:
-        st.session_state.history.insert(0, {
-            "video_name": os.path.basename(video_output_path),
-            "srt_name": os.path.basename(srt_path),
-            "video_data": f2.read(),
-            "srt_data": f1.read()
-        })
-        st.session_state.history = st.session_state.history[:3]
 
-    # Save to database with error handling
-    if not save_subtitle_history(st.session_state.username, spoken_lang, target_lang, os.path.basename(video_output_path)):
-        #st.warning("⚠️ Files processed successfully but could not be saved to database history.")
-        pass
-
+# -------------------------------------------------------
+#                 MAIN USER HOME PAGE
+# -------------------------------------------------------
 def main_page():
     st.markdown("## 🎨 Subtitle Generator")
-    st.write(f"👋 Welcome, **{st.session_state.username}**")
+    st.write(f"👋 Welcome **{st.session_state.username}**")
     st.markdown("---")
 
-    
+    # ---------------- Sidebar ----------------
     with st.sidebar:
         if st.session_state.get("role") == "admin":
             admin_choice = st.radio("🛠️ Admin Menu", ["Main Page", "Admin Panel"], key="admin_menu_radio")
@@ -500,58 +595,85 @@ def main_page():
         else:
             st.markdown(f"✅ Logged in as `{st.session_state.username}`")
 
-    st.markdown("### 📤 Upload Audio/Video")
-    st.session_state.uploaded_file = st.file_uploader("Choose a file", type=["mp4", "wav", "m4a"])
-    st.session_state.spoken_lang = st.selectbox("🗣️ Spoken Language", ["Auto"] + list(st.session_state.LANG_DICT.keys()))
+    # =======================================================
 
-    st.markdown("### ⚙️ Transcription Mode")
+    # -------- Upload Section ----------
+    st.markdown("### 📤 Upload Video/Audio")
+    st.session_state.uploaded_file = st.file_uploader(
+        "Choose a file", type=["mp4", "wav", "m4a"])
+
+    st.session_state.spoken_lang = st.selectbox(
+        "🗣️ Spoken Language", ["Auto"] + list(st.session_state.LANG_DICT.keys())
+    )
+
+    # -------- Model Selection ----------
+    st.markdown("### ⚙️ AI Model Mode")
+
     model_map = {
         "tiny": ("🐆 Cheetah", "Fastest But Less Accurate"),
-        "medium": ("🐬 Dolphin", "Balanced In Both Accuracy And Speed"),
-        "large": ("🐋 Whale", "Most Accurate But Very Slow")
+        "medium": ("🐬 Dolphin", "Balanced with Medium Accuracy"),
+        "large": ("🐋 Whale", "Slow But Most Accurate")
     }
+
     cols = st.columns(3)
     for i, (key, (emoji, label)) in enumerate(model_map.items()):
         with cols[i]:
             if st.button(f"{emoji} {label}", key=key):
                 st.session_state.model_size = key
+
     selected_emoji, selected_label = model_map[st.session_state.model_size]
-    st.markdown(f"<div style='margin-top:10px;padding:8px;border-radius:6px;background-color:#004225;color:white;font-weight:bold;display:inline-block;'>✅ Selected: {selected_label} Mode ({selected_emoji})</div>", unsafe_allow_html=True)
+    st.markdown(
+        f"<div style='padding:8px;background:#004225;color:#fff;border-radius:6px;'>"
+        f"Selected: {selected_label} Mode {selected_emoji}"
+        "</div>", unsafe_allow_html=True)
 
+    # -------- Subtitle Language ----------
     st.markdown("### 🌐 Subtitle Language")
-    st.session_state.target_lang = st.selectbox("Select subtitle output language:", list(st.session_state.LANG_DICT.keys()))
+    st.session_state.target_lang = st.selectbox(
+        "Subtitle Output Language:", list(st.session_state.LANG_DICT.keys()))
 
+    # -------- Start Processing ----------
     if st.button("▶️ Start Processing"):
         if not st.session_state.authenticated:
-            st.warning("Login required.")
+            st.warning("Login required!")
             st.session_state.page = "login"
             st.rerun()
-        elif not st.session_state.uploaded_file:
-            st.warning("Please upload a file.")
+        if not st.session_state.uploaded_file:
+            st.warning("Upload a file first.")
         else:
             process_video()
 
+    # -------- Show Downloads after processing ----------
     if st.session_state.processing_done:
-        st.success("✅ Subtitles generated!")
+        st.success("🎉 Subtitles Ready!")
         col1, col2 = st.columns(2)
         with col1:
-            with open(st.session_state.srt_file, "rb") as srt:
-                st.download_button("📄 Download Subtitle", srt, file_name=os.path.basename(st.session_state.srt_file))
+            with open(st.session_state.srt_file, "rb") as f:
+                st.download_button("📄 Download Subtitle", f,
+                                   file_name=os.path.basename(st.session_state.srt_file))
         with col2:
-            with open(st.session_state.video_file, "rb") as vid:
-                st.download_button("🎮 Download Video", vid, file_name=os.path.basename(st.session_state.video_file))
+            with open(st.session_state.video_file, "rb") as f:
+                st.download_button("🎮 Download Video", f,
+                                   file_name=os.path.basename(st.session_state.video_file))
 
 
 
+# -------------------------------------------------------
+#              APP ROUTING (NAVIGATION)
+# -------------------------------------------------------
 def main():
+
+    # load user role
     if st.session_state.authenticated:
         db = get_connection()
         user_data = db["users"].find_one({"username": st.session_state.username})
         st.session_state.role = "admin" if user_data.get("is_admin") else "user"
 
+    # ROUTING
     if st.session_state.page == "admin":
         admin_panel()
         return
+
     if st.session_state.page == "login":
         login()
         return
@@ -563,21 +685,23 @@ def main():
     if st.session_state.page == "profile":
         profile_page()
         return
-    
+
     if st.session_state.page == "reset_password":
         reset_password()
         return
 
-
-    # Load history if not already loaded
+    # Load history when authenticated
     if st.session_state.authenticated and not st.session_state.history:
         db = get_connection()
         load_recent_history_from_mongo(st.session_state.username, db)
 
-    # Default to main page
+    # default main page
     main_page()
 
 
+
+# -------------------------------------------------------
+#                    APP ENTRY POINT
+# -------------------------------------------------------
 if __name__ == "__main__":
     main()
-    

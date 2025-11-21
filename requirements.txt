@@ -13,3 +13,4 @@ dnspython==2.4.2
 certifi
 bcrypt
 python-dotenv 
+streamlit-cookies-manager

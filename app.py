@@ -17,7 +17,6 @@ from admin_panel import admin_panel
 
 # MongoDB Connection
 def get_connection():
-    # Use environment variables for security
     username = os.getenv("MONGODB_USERNAME", "rudra")
     password = quote_plus(os.getenv("MONGODB_PASSWORD", "Rudra@123"))
     cluster_url = os.getenv("MONGODB_CLUSTER_URL", "cluster0.ucw0onm.mongodb.net")
@@ -157,52 +156,63 @@ def signup():
     password = st.text_input("Password", type="password")
 
     if st.button("Sign Up"):
-        if full_name and email and username and password:
-            # Basic validation
-            if len(password) < 6:
-                st.error("Password must be at least 6 characters long.")
-            elif "@" not in email or "." not in email:
-                st.error("Please enter a valid email address.")
-            elif len(username) < 3:
-                st.error("Username must be at least 3 characters long.")
-            else:
-                db = get_connection()
-                if db is None:
-                    st.error("❌ Cannot create account: Database connection failed")
-                    return
-                    
-                users = db["users"]
+        if not full_name or not email or not username or not password:
+            st.error("⚠️ All fields are required.")
+            return
 
-                if users.find_one({"username": username}):
-                    st.error("Username already exists.")
-                elif users.find_one({"email": email}):
-                    st.error("An account with this email already exists.")
-                else:
-                    try:
-                        hashed_pw = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
-                        users.insert_one({
-                            "full_name": full_name,
-                            "email": email,
-                            "username": username,
-                            "password": hashed_pw,
-                            "history": []
-                        })
-                        st.success("Account created! Please log in.")
-                        st.session_state.page = "login"
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"❌ Failed to create account: {str(e)}")
-        else:
-            st.warning("Please fill in all fields.")
-    if st.button("⬅️ Go Back"):
-        st.session_state.page = "home"
+        if "@" not in email or "." not in email:
+            st.error("⚠️ Please enter a valid email address.")
+            return
+
+        if len(username) < 3:
+            st.error("⚠️ Username must be at least 3 characters long.")
+            return
+
+        if len(password) < 6:
+            st.error("⚠️ Password must be at least 6 characters long.")
+            return
+
+        db = get_connection()
+        if db is None:
+            st.error("❌ Cannot create account: Database connection failed.")
+            return
+
+        users = db["users"]
+
+        if users.find_one({"username": username}):
+            st.error("⚠️ Username already exists.")
+            return
+
+        if users.find_one({"email": email}):
+            st.error("⚠️ Email already registered.")
+            return
+
+        # ------------------ CREATE USER ------------------
+        hashed_pw = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
+        users.insert_one({
+            "full_name": full_name,
+            "email": email,
+            "username": username,
+            "password": hashed_pw,
+            "is_admin": False,
+            "is_blocked": False,
+            "history": []
+        })
+
+        st.success("🎉 Account created! Please log in.")
+        st.session_state.page = "login"
         st.rerun()
-    
+
+    if st.button("⬅️ Go Back"):
+        st.session_state.page = "main"
+        st.rerun()
+
     st.markdown("---")
     st.markdown("Already have an account?")
     if st.button("🔐 Login Here"):
         st.session_state.page = "login"
         st.rerun()
+
 
 def reset_password():
     st.title("🔑 Reset Password")
@@ -235,54 +245,64 @@ def reset_password():
 
 def login():
     st.title("🔐 Login")
+
     username = st.text_input("Username")
     password = st.text_input("Password", type="password")
 
-    col1, col2 = st.columns([1, 1])
-    with col1:
-        if st.button("Login"):
-            db = get_connection()
-            if db is None:
-                st.error("❌ Cannot login: Database connection failed")
-                return
-                
-            users = db["users"]
+    if st.button("Login"):
 
-            user = users.find_one({"username": username})
-            if user:
-                if user.get("is_blocked"):
-                    st.error("🚫 Your account has been blocked by the admin.")
-                    return
-                if bcrypt.checkpw(password.encode("utf-8"), user["password"]):
-                    st.session_state.authenticated = True
-                    st.session_state.username = username
-                    st.session_state.role = "admin" if user.get("is_admin") else "user"
-                    st.session_state.page = "main"
-                    load_recent_history_from_mongo(username, db)
-                    st.success("✅ Logged in successfully!")
-                    st.rerun()
-                else:
-                    st.error("❌ Invalid credentials")
-            else:
-                st.error("❌ User not found.")
+        # --- Required Field Check ---
+        if not username or not password:
+            st.error("⚠️ Please enter both username and password.")
+            return
 
-    with col2:
-        if st.button("🏠 Back to Home"):
-            st.session_state.page = "main"
-            st.rerun()
+        db = get_connection()
+        if db is None:
+            st.error("❌ Cannot login: Database connection failed")
+            return
+
+        users = db["users"]
+        user = users.find_one({"username": username})
+
+        # --- Username Check ---
+        if not user:
+            st.error("❌ Username does not exist.")
+            return
+
+        # --- Blocked Account Check ---
+        if user.get("is_blocked"):
+            st.error("🚫 Your account has been blocked by the admin.")
+            return
+
+        # --- Password Check ---
+        if not bcrypt.checkpw(password.encode("utf-8"), user["password"]):
+            st.error("❌ Incorrect password.")
+            return
+
+        # Successful Login
+        st.session_state.authenticated = True
+        st.session_state.username = username
+        st.session_state.role = "admin" if user.get("is_admin") else "user"
+        st.session_state.page = "main"
+
+        # Load recent history
+        load_recent_history_from_mongo(username, db)
+
+        st.success("✅ Logged in successfully!")
+        st.rerun()
 
     st.markdown("---")
-    st.markdown("Don't have an account?")
-    if st.button("📝 Sign Up"):
-        st.session_state.page = "signup"
-        st.rerun()
 
-    st.write("Forgot your password?")
-    if st.button("🔑 Forgot Password"):
-        st.session_state.page = "reset_password"
-        st.rerun()
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("📝 Sign Up"):
+            st.session_state.page = "signup"
+            st.rerun()
 
-
+    with col2:
+        if st.button("🔑 Forgot Password"):
+            st.session_state.page = "reset_password"
+            st.rerun()
 
 def logout():
     st.session_state.clear()
@@ -479,7 +499,7 @@ def main_page():
             st.markdown(f"✅ Logged in as `{st.session_state.username}`")
 
     st.markdown("### 📤 Upload Audio/Video")
-    st.session_state.uploaded_file = st.file_uploader("Choose a file", type=["mp4", "mp3", "wav", "m4a"])
+    st.session_state.uploaded_file = st.file_uploader("Choose a file", type=["mp4", "wav", "m4a"])
     st.session_state.spoken_lang = st.selectbox("🗣️ Spoken Language", ["Auto"] + list(st.session_state.LANG_DICT.keys()))
 
     st.markdown("### ⚙️ Transcription Mode")

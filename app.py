@@ -19,24 +19,23 @@ from admin_panel import admin_panel
 def get_connection():
     username = os.getenv("MONGODB_USERNAME")
     password = quote_plus(os.getenv("MONGODB_PASSWORD"))
-    cluster_url = os.getenv("MONGODB_CLUSTER")  
+    cluster_url = os.getenv("MONGODB_CLUSTER")
     database_name = os.getenv("MONGODB_DATABASE")
 
     uri = f"mongodb+srv://{username}:{password}@{cluster_url}/{database_name}?retryWrites=true&w=majority"
-    return MongoClient(uri)
 
-    uri = f"mongodb+srv://{username}:{password}@{cluster_url}/{database_name}?retryWrites=true&w=majority"
-    
     try:
         client = MongoClient(uri, tls=True, serverSelectionTimeoutMS=5000)
-        # Test the connection
-        client.admin.command('ping')
-        db = client[database_name]
-        return db
+
+        # Test connection
+        client.admin.command("ping")
+
+        return client[database_name]   # ✅ RETURN THE DATABASE, NOT THE CLIENT
+
     except Exception as e:
-        st.error(f"❌ Database connection failed: {str(e)}")
-        st.error("Please check your MongoDB credentials and network connection.")
+        st.error(f"❌ Database connection failed: {e}")
         return None
+
 
 # Store new file versions and keep only 3 per user
 def save_to_gridfs(username, video_path, srt_path):

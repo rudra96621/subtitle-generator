@@ -527,9 +527,9 @@ def process_video():
         save_to_gridfs(st.session_state.username, video_output_path, srt_path)
 
     except Exception as e:
-    st.error(f"❌ Error: {str(e)}")
-    st.exception(e)   # This prints the actual traceback
-    st.session_state.is_processing = False
+        st.error(f"❌ Error: {str(e)}")
+        st.exception(e)   # This prints the actual traceback
+        st.session_state.is_processing = False
 
 
 

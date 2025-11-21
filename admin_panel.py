@@ -6,11 +6,14 @@ from bson import ObjectId
 import gridfs
 
 def get_connection():
-    username = "rudra"
-    password = quote_plus("Rudra@123")
-    uri = f"mongodb+srv://{username}:{password}@cluster0.ucw0onm.mongodb.net/subtitleApp?retryWrites=true&w=majority"
-    client = MongoClient(uri, tls=True)
-    db = client["subtitleApp"]
+    username = os.getenv("MONGODB_USERNAME")
+    password = quote_plus(os.getenv("MONGODB_PASSWORD"))
+    cluster_url = os.getenv("MONGODB_CLUSTER")
+    database_name = os.getenv("MONGODB_DATABASE")
+
+    uri = f"mongodb+srv://{username}:{password}@{cluster_url}/{database_name}?retryWrites=true&w=majority"
+    client = MongoClient(uri)
+    db = client[database_name]
     return db
 
 def render_tag(text, bg_color):
